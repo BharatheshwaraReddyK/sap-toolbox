@@ -5,14 +5,16 @@ constantly in SAP integration work — JSON, XML, CSV, YAML, Excel, and Java `.p
 plus a few helpers aimed specifically at SAP payloads: an IDoc segment viewer, an OData response
 beautifier, and a lightweight field mapping designer.
 
-Everything runs client-side. Nothing you paste in is sent to a server.
+Everything runs client-side. Nothing you paste in is sent to a server. Includes a light/dark
+theme toggle (persisted locally), file upload on every editable pane, and downloadable diff
+reports (HTML, PDF, or PNG).
 
 ## Tools
 
 **Convert**
-- XML ⇄ JSON
-- CSV ⇄ JSON
-- CSV ⇄ XML
+- XML ⇄ JSON — optional root-element stripping, with a configurable root name for rebuilding
+- CSV ⇄ JSON — configurable delimiter, nested structures flattened to dotted columns
+- CSV ⇄ XML — configurable root/row element names and delimiter
 - Excel ⇄ JSON / CSV (upload a workbook, or paste JSON/CSV to download one)
 - YAML ⇄ JSON
 - `.properties` ⇄ JSON
@@ -20,13 +22,17 @@ Everything runs client-side. Nothing you paste in is sent to a server.
 **Format & validate**
 - JSON formatter (validate, beautify/minify, sort keys)
 - XML formatter (validate, beautify/minify, strip namespaces)
-- CSV normalizer (header/row-length checks, delimiter conversion)
+- CSV normalizer (header/row-length checks — reported as warnings, not fatal errors — delimiter conversion)
 - YAML formatter (validate, re-indent)
 
-**Compare**
-- JSON diff (structural, path-level)
-- XML diff (canonicalized structural compare)
-- CSV diff (row-wise or by a key column, field-level highlights)
+**Compare** — every tool supports uploading a file for either side, and downloading a report
+(HTML / PDF / PNG) of the results
+- JSON diff — structural, path-level, with moved-element detection and word-level highlighting for changed strings
+- XML diff — canonicalized structural compare, same moved/word-diff support
+- CSV diff — row-wise or by a key column, with moved-row detection and word-level field highlights
+
+Differences are labeled with a consistent symbol scheme: `+` only in B, `−` only in A,
+`⇄` moved/shuffled, `~` modified.
 
 **SAP payload helpers**
 - IDoc viewer & converter — segment-aware XML → JSON with an expandable tree
@@ -78,4 +84,5 @@ functions in `lib/formats/`, then add a short page file and a `registry.ts` entr
 ## Stack
 
 React + TypeScript + Vite, Tailwind CSS v4, and a small set of format libraries:
-`fast-xml-parser`, `papaparse`, `js-yaml`, `xlsx` (SheetJS).
+`fast-xml-parser`, `papaparse`, `js-yaml`, `xlsx` (SheetJS), `diff` (word-level highlighting),
+`html2canvas` and `jspdf` (report export, lazy-loaded on demand).
