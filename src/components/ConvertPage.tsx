@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import ManifestStrip from './ManifestStrip'
 import StatusTicker from './StatusTicker'
 import CodePane from './CodePane'
@@ -18,9 +18,12 @@ interface Props {
   description: string
   formatA: FormatDef
   formatB: FormatDef
+  /** Optional controls (root name inputs, delimiter pickers, etc.) rendered above the panes.
+   *  Re-created on every render by the caller, so changing the underlying state re-triggers conversion. */
+  extraControls?: ReactNode
 }
 
-export default function ConvertPage({ eyebrow, title, description, formatA, formatB }: Props) {
+export default function ConvertPage({ eyebrow, title, description, formatA, formatB, extraControls }: Props) {
   const [reversed, setReversed] = useState(false)
   const source = reversed ? formatB : formatA
   const target = reversed ? formatA : formatB
@@ -42,8 +45,10 @@ export default function ConvertPage({ eyebrow, title, description, formatA, form
       setError(e instanceof Error ? e.message : 'Conversion failed.')
       return ''
     }
+    // formatA/formatB are re-created by the caller whenever page-level options change,
+    // so including them here means those options retrigger the conversion.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [input, reversed])
+  }, [input, reversed, source, target])
 
   function swap() {
     setReversed((v) => !v)
@@ -66,7 +71,7 @@ export default function ConvertPage({ eyebrow, title, description, formatA, form
       <StatusTicker error={error} />
 
       <div className="px-6 sm:px-8 py-6 flex flex-col gap-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="font-mono text-[11px] text-ink-text-dim">
             {source.name} <span className="text-signal mx-1">→</span> {target.name}
           </div>
@@ -74,6 +79,8 @@ export default function ConvertPage({ eyebrow, title, description, formatA, form
             ⇄ swap direction
           </Button>
         </div>
+
+        {extraControls && <div className="flex items-center gap-4 flex-wrap">{extraControls}</div>}
 
         <div className="grid lg:grid-cols-2 gap-4">
           <CodePane

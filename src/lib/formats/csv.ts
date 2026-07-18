@@ -3,6 +3,7 @@ import Papa from 'papaparse'
 export interface CSVParseResult {
   rows: Record<string, string>[]
   fields: string[]
+  warnings: string[]
 }
 
 export function parseCSV(text: string, delimiter = ''): CSVParseResult {
@@ -12,11 +13,15 @@ export function parseCSV(text: string, delimiter = ''): CSVParseResult {
     skipEmptyLines: true,
     delimiter: delimiter || undefined,
   })
-  if (result.errors.length) {
-    const first = result.errors[0]
+
+  const fatal = result.errors.filter((e) => e.type !== 'FieldMismatch')
+  if (fatal.length) {
+    const first = fatal[0]
     throw new Error(`CSV parse error — ${first.message} (row ${first.row ?? '?'})`)
   }
-  return { rows: result.data, fields: result.meta.fields ?? [] }
+
+  const warnings = result.errors.map((e) => `${e.message} (row ${e.row ?? '?'})`)
+  return { rows: result.data, fields: result.meta.fields ?? [], warnings }
 }
 
 export function objectsToCSV(rows: Record<string, unknown>[], delimiter = ','): string {

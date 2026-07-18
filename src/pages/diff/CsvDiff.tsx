@@ -1,46 +1,89 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import ManifestStrip from '../../components/ManifestStrip'
 import StatusTicker from '../../components/StatusTicker'
 import CodePane from '../../components/CodePane'
+import ReportDownload from '../../components/ReportDownload'
+import WordDiff from '../../components/WordDiff'
 import { parseCSV } from '../../lib/formats/csv'
-import { diffCSV } from '../../lib/diff/csvDiff'
+import { diffCSV, type CSVRowDiff } from '../../lib/diff/csvDiff'
+import { buildReportHtml, type ReportRow } from '../../lib/report'
 
 const a = `sku,description,qty
 A100,Widget,2
-B200,Bracket,1`
-
-const b = `sku,description,qty
-A100,Widget,3
 B200,Bracket,1
 C300,Bolt,5`
 
-const statusStyle: Record<string, string> = {
+const b = `sku,description,qty
+B200,Bracket,1
+A100,Widget Mk II,2
+D400,Washer,10`
+
+const statusStyle: Record<CSVRowDiff['status'], string> = {
   added: 'text-add border-add/30 bg-add/10',
   removed: 'text-alert border-alert/30 bg-alert/10',
-  changed: 'text-signal border-signal/30 bg-signal/10',
+  changed: 'text-warn border-warn/30 bg-warn/10',
+  moved: 'text-move border-move/30 bg-move/10',
   unchanged: 'text-ink-text-dim border-line',
+}
+
+const statusSymbol: Record<CSVRowDiff['status'], string> = {
+  added: '+',
+  removed: '−',
+  changed: '~',
+  moved: '⇄',
+  unchanged: '=',
+}
+
+const statusLabel: Record<CSVRowDiff['status'], string> = {
+  added: 'only in B',
+  removed: 'only in A',
+  changed: 'modified',
+  moved: 'moved / shuffled',
+  unchanged: 'unchanged',
+}
+
+const statusHex: Record<CSVRowDiff['status'], string> = {
+  added: '#2f8a4e',
+  removed: '#c2402c',
+  changed: '#ad7a1e',
+  moved: '#3568a8',
+  unchanged: '#838f98',
 }
 
 export default function CsvDiff() {
   const [left, setLeft] = useState(a)
   const [right, setRight] = useState(b)
   const [keyField, setKeyField] = useState('')
+  const resultsRef = useRef<HTMLDivElement>(null)
 
   const { rows, fields, error } = useMemo(() => {
-    if (!left.trim() || !right.trim()) return { rows: [], fields: [] as string[], error: null }
+    if (!left.trim() || !right.trim()) return { rows: [] as CSVRowDiff[], fields: [] as string[], error: null }
     try {
       const parsedA = parseCSV(left)
       const parsedB = parseCSV(right)
       const fields = [...new Set([...parsedA.fields, ...parsedB.fields])]
       return { rows: diffCSV(parsedA, parsedB, keyField || undefined), fields, error: null }
     } catch (e) {
-      return { rows: [], fields: [] as string[], error: e instanceof Error ? e.message : 'Could not compare inputs.' }
+      return { rows: [] as CSVRowDiff[], fields: [] as string[], error: e instanceof Error ? e.message : 'Could not compare inputs.' }
     }
   }, [left, right, keyField])
 
-  const summary = !error && rows.length
-    ? `${rows.filter((r) => r.status !== 'unchanged').length} of ${rows.length} row(s) differ`
-    : null
+  const changedCount = rows.filter((r) => r.status !== 'unchanged').length
+  const summary = !error && rows.length ? `${changedCount} of ${rows.length} row(s) differ` : null
+
+  function buildHtml() {
+    const reportRows: ReportRow[] = rows
+      .filter((r) => r.status !== 'unchanged')
+      .map((r) => ({
+        symbol: statusSymbol[r.status],
+        label: statusLabel[r.status],
+        path: r.key,
+        before: r.before ? JSON.stringify(r.before) : undefined,
+        after: r.after ? JSON.stringify(r.after) : undefined,
+        colorHex: statusHex[r.status],
+      }))
+    return buildReportHtml('CSV diff', summary ?? 'CSV row comparison', reportRows)
+  }
 
   return (
     <>
@@ -53,20 +96,23 @@ export default function CsvDiff() {
       <StatusTicker error={error} ok={summary} />
 
       <div className="px-6 sm:px-8 py-6 flex flex-col gap-4">
-        <div className="flex items-center gap-2 font-mono text-[12px] text-ink-text-dim">
-          <span>match rows by</span>
-          <select
-            value={keyField}
-            onChange={(e) => setKeyField(e.target.value)}
-            className="bg-panel border border-line rounded-sm px-2 py-1 text-paper"
-          >
-            <option value="">row position</option>
-            {fields.map((f) => (
-              <option key={f} value={f}>
-                {f}
-              </option>
-            ))}
-          </select>
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-2 font-mono text-[12px] text-ink-text-dim">
+            <span>match rows by</span>
+            <select
+              value={keyField}
+              onChange={(e) => setKeyField(e.target.value)}
+              className="bg-panel border border-line rounded-sm px-2 py-1 text-paper"
+            >
+              <option value="">row position</option>
+              {fields.map((f) => (
+                <option key={f} value={f}>
+                  {f}
+                </option>
+              ))}
+            </select>
+          </div>
+          <ReportDownload filenameBase="csv-diff-report" resultsRef={resultsRef} buildHtml={buildHtml} disabled={changedCount === 0} />
         </div>
 
         <div className="grid lg:grid-cols-2 gap-4">
@@ -75,7 +121,7 @@ export default function CsvDiff() {
         </div>
 
         {rows.length > 0 && (
-          <div className="border border-line rounded-md overflow-hidden">
+          <div ref={resultsRef} className="border border-line rounded-md overflow-hidden bg-panel">
             <div className="px-3.5 py-2 border-b border-line bg-panel-raised text-[12px] font-medium text-ink-text">
               Row-level differences
             </div>
@@ -84,19 +130,21 @@ export default function CsvDiff() {
                 <li key={r.key} className="px-3.5 py-2.5 flex flex-col gap-1.5">
                   <div className="flex items-center gap-2">
                     <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded-sm border ${statusStyle[r.status]}`}>
-                      {r.status}
+                      {statusSymbol[r.status]} {statusLabel[r.status]}
                     </span>
                     <code className="text-[12px] text-paper">{r.key}</code>
                   </div>
                   {r.status === 'changed' &&
-                    r.changedFields.map((f) => (
-                      <div key={f} className="text-[12px] font-mono pl-1">
-                        <span className="text-ink-text-dim">{f}: </span>
-                        <span className="text-alert/90">{r.before?.[f] ?? '∅'}</span>
-                        <span className="text-ink-text-dim"> → </span>
-                        <span className="text-add/90">{r.after?.[f] ?? '∅'}</span>
-                      </div>
-                    ))}
+                    r.changedFields.map((f) => {
+                      const beforeVal = r.before?.[f] ?? ''
+                      const afterVal = r.after?.[f] ?? ''
+                      return (
+                        <div key={f} className="pl-1">
+                          <div className="text-[11px] font-mono text-ink-text-dim mb-0.5">{f}</div>
+                          <WordDiff before={beforeVal} after={afterVal} />
+                        </div>
+                      )
+                    })}
                 </li>
               ))}
             </ul>

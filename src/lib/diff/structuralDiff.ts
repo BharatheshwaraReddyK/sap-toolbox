@@ -1,10 +1,13 @@
-export type DiffKind = 'added' | 'removed' | 'changed' | 'unchanged'
+export type DiffKind = 'added' | 'removed' | 'changed' | 'moved' | 'unchanged'
 
 export interface DiffEntry {
   path: string
   kind: DiffKind
   before?: unknown
   after?: unknown
+  /** For 'moved' entries: the index it moved from/to within its parent array. */
+  fromIndex?: number
+  toIndex?: number
 }
 
 interface Options {
@@ -58,24 +61,81 @@ function walk(a: unknown, b: unknown, path: string, out: DiffEntry[], opts: Opti
   }
 }
 
+/**
+ * Array diffing in two passes:
+ * 1. Exact-match pass — elements that are deeply equal but sit at a different index are
+ *    reported once as 'moved' rather than as a spurious removed+added pair.
+ * 2. Remaining, unmatched elements are compared positionally (changed/added/removed),
+ *    or — if ignoreArrayOrder is set and everything left is a primitive — sorted first.
+ */
 function diffArrays(a: unknown[], b: unknown[], path: string, out: DiffEntry[], opts: Options) {
-  if (opts.ignoreArrayOrder && a.every(isPrimitive) && b.every(isPrimitive)) {
-    const aSet = [...a].sort()
-    const bSet = [...b].sort()
-    for (let i = 0; i < Math.max(aSet.length, bSet.length); i++) {
-      if (!deepEqual(aSet[i], bSet[i])) {
-        out.push({ path: `${path}[${i}]`, kind: aSet[i] === undefined ? 'added' : bSet[i] === undefined ? 'removed' : 'changed', before: aSet[i], after: bSet[i] })
-      }
+  const usedA = new Set<number>()
+  const usedB = new Set<number>()
+  const bByValue = new Map<string, number[]>()
+
+  b.forEach((val, i) => {
+    const key = stableKey(val)
+    const list = bByValue.get(key) ?? []
+    list.push(i)
+    bByValue.set(key, list)
+  })
+
+  // Pass 1: exact matches, tracking moves.
+  a.forEach((val, i) => {
+    const key = stableKey(val)
+    const candidates = bByValue.get(key)
+    if (!candidates || candidates.length === 0) return
+    const j = candidates.shift()!
+    usedA.add(i)
+    usedB.add(j)
+    if (i !== j) {
+      out.push({ path: `${path}[${i}\u2192${j}]`, kind: 'moved', before: val, after: val, fromIndex: i, toIndex: j })
+    }
+  })
+
+  const remainingA = a.map((_v, i) => i).filter((i) => !usedA.has(i))
+  const remainingB = b.map((_v, i) => i).filter((i) => !usedB.has(i))
+
+  if (opts.ignoreArrayOrder && remainingA.every((i) => isPrimitive(a[i])) && remainingB.every((i) => isPrimitive(b[i]))) {
+    const aVals = remainingA.map((i) => a[i]).sort()
+    const bVals = remainingB.map((i) => b[i]).sort()
+    for (let k = 0; k < Math.max(aVals.length, bVals.length); k++) {
+      if (k >= aVals.length) out.push({ path: `${path}[+${k}]`, kind: 'added', after: bVals[k] })
+      else if (k >= bVals.length) out.push({ path: `${path}[-${k}]`, kind: 'removed', before: aVals[k] })
+      else if (!deepEqual(aVals[k], bVals[k])) out.push({ path: `${path}[~${k}]`, kind: 'changed', before: aVals[k], after: bVals[k] })
     }
     return
   }
-  const max = Math.max(a.length, b.length)
-  for (let i = 0; i < max; i++) {
-    const childPath = `${path}[${i}]`
-    if (i >= a.length) out.push({ path: childPath, kind: 'added', after: b[i] })
-    else if (i >= b.length) out.push({ path: childPath, kind: 'removed', before: a[i] })
-    else walk(a[i], b[i], childPath, out, opts)
+
+  // Pass 2: pair remaining indices positionally.
+  const max = Math.max(remainingA.length, remainingB.length)
+  for (let k = 0; k < max; k++) {
+    const ai = remainingA[k]
+    const bi = remainingB[k]
+    if (ai === undefined) out.push({ path: `${path}[${bi}]`, kind: 'added', after: b[bi] })
+    else if (bi === undefined) out.push({ path: `${path}[${ai}]`, kind: 'removed', before: a[ai] })
+    else walk(a[ai], b[bi], `${path}[${ai === bi ? ai : `${ai}\u2192${bi}`}]`, out, opts)
   }
+}
+
+function stableKey(v: unknown): string {
+  try {
+    return JSON.stringify(v, sortedReplacer)
+  } catch {
+    return String(v)
+  }
+}
+
+function sortedReplacer(_key: string, value: unknown) {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return Object.keys(value as object)
+      .sort()
+      .reduce((acc: Record<string, unknown>, k) => {
+        acc[k] = (value as Record<string, unknown>)[k]
+        return acc
+      }, {})
+  }
+  return value
 }
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {

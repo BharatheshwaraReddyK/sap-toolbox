@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
+import ThemeToggle from './ThemeToggle'
 import { registry } from '../lib/registry'
 
 export default function Layout() {
@@ -15,12 +16,15 @@ export default function Layout() {
           <NavLink to="/" className="font-mono text-[11px] tracking-[0.2em] text-signal">
             MANIFEST
           </NavLink>
-          <button
-            onClick={() => setMobileOpen((v) => !v)}
-            className="font-mono text-[11px] text-ink-text-dim border border-line rounded-sm px-2.5 py-1"
-          >
-            {mobileOpen ? 'close' : 'tools'}
-          </button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle compact />
+            <button
+              onClick={() => setMobileOpen((v) => !v)}
+              className="font-mono text-[11px] text-ink-text-dim border border-line rounded-sm px-2.5 py-1"
+            >
+              {mobileOpen ? 'close' : 'tools'}
+            </button>
+          </div>
         </div>
         {mobileOpen && (
           <div className="lg:hidden border-b border-line px-5 py-3 max-h-[60vh] overflow-y-auto">

@@ -1,13 +1,17 @@
 import { NavLink } from 'react-router-dom'
 import { registry } from '../lib/registry'
+import ThemeToggle from './ThemeToggle'
 
 export default function Sidebar() {
   return (
     <aside className="hidden lg:flex w-64 flex-col border-r border-line shrink-0 h-screen sticky top-0 overflow-y-auto">
-      <NavLink to="/" className="px-5 pt-6 pb-5 border-b border-line-soft block">
-        <div className="font-mono text-[11px] tracking-[0.2em] text-signal">MANIFEST</div>
-        <div className="text-sm text-ink-text-dim mt-1 leading-snug">SAP payload toolbox</div>
-      </NavLink>
+      <div className="px-5 pt-6 pb-5 border-b border-line-soft flex items-start justify-between gap-2">
+        <NavLink to="/" className="block">
+          <div className="font-mono text-[11px] tracking-[0.2em] text-signal">MANIFEST</div>
+          <div className="text-sm text-ink-text-dim mt-1 leading-snug">SAP payload toolbox</div>
+        </NavLink>
+        <ThemeToggle compact />
+      </div>
       <nav className="flex-1 py-2">
         {registry.map((cat) => (
           <div key={cat.id} className="px-3 py-3">

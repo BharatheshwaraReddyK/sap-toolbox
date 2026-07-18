@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 
 interface Props {
   label: string
@@ -11,6 +11,8 @@ interface Props {
   downloadName?: string
   extraActions?: ReactNode
   minHeightClass?: string
+  /** file extensions/mime types accepted by the upload button, e.g. ".csv,.txt" */
+  accept?: string
 }
 
 export default function CodePane({
@@ -24,8 +26,11 @@ export default function CodePane({
   downloadName,
   extraActions,
   minHeightClass = 'min-h-[420px]',
+  accept,
 }: Props) {
   const [copied, setCopied] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   async function handleCopy() {
     try {
@@ -37,6 +42,18 @@ export default function CodePane({
     }
   }
 
+  async function handleFile(file: File) {
+    try {
+      const text = await file.text()
+      onChange?.(text)
+      setUploadError(null)
+    } catch {
+      setUploadError('Could not read that file as text.')
+    }
+  }
+
+  const canUpload = Boolean(onChange) && !readOnly
+
   return (
     <div className="flex flex-col border border-line rounded-md overflow-hidden bg-panel">
       <div className="flex items-center justify-between px-3.5 py-2 border-b border-line bg-panel-raised">
@@ -47,9 +64,32 @@ export default function CodePane({
               {tag}
             </span>
           )}
+          {uploadError && <span className="text-[11px] font-mono text-alert">{uploadError}</span>}
         </div>
         <div className="flex items-center gap-3">
           {extraActions}
+          {canUpload && (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={accept}
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) handleFile(file)
+                  e.target.value = ''
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="text-[11px] font-mono text-ink-text-dim hover:text-signal transition-colors"
+              >
+                upload
+              </button>
+            </>
+          )}
           {value && (
             <button
               type="button"

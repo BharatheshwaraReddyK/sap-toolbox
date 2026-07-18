@@ -4,6 +4,7 @@
   --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --font-sans: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif;
 
+  /* Dark theme is the default token set. */
   --color-ink: #10151b;
   --color-panel: #182028;
   --color-panel-raised: #1f2932;
@@ -15,8 +16,30 @@
   --color-signal-dim: #2c7d78;
   --color-alert: #d9614a;
   --color-add: #5fb47c;
+  --color-warn: #d9a441;
+  --color-move: #5b8fd9;
   --color-ink-text: #aab6bf;
   --color-ink-text-dim: #6b7882;
+}
+
+/* Light theme overrides the same tokens — utility classes (bg-ink, text-paper, etc.)
+   don't need to change anywhere else in the app. */
+:root[data-theme='light'] {
+  --color-ink: #f2f4f5;
+  --color-panel: #ffffff;
+  --color-panel-raised: #eef1f2;
+  --color-line: #d7dde1;
+  --color-line-soft: #e6eaec;
+  --color-paper: #141a1f;
+  --color-paper-dim: #3b4550;
+  --color-signal: #2c8a84;
+  --color-signal-dim: #226f6a;
+  --color-alert: #c2402c;
+  --color-add: #2f8a4e;
+  --color-warn: #ad7a1e;
+  --color-move: #3568a8;
+  --color-ink-text: #4b5761;
+  --color-ink-text-dim: #838f98;
 }
 
 html, body, #root {
@@ -28,6 +51,7 @@ body {
   color: var(--color-ink-text);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 * {

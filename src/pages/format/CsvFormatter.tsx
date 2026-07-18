@@ -23,10 +23,9 @@ export default function CsvFormatter() {
   const { output, error, warning, fieldCount, rowCount } = useMemo(() => {
     if (!input.trim()) return { output: '', error: null, warning: null, fieldCount: 0, rowCount: 0 }
     try {
-      const { rows, fields } = parseCSV(input)
-      const uneven = rows.filter((r) => Object.keys(r).length !== fields.length)
-      const warning = uneven.length
-        ? `${uneven.length} row(s) have a different column count than the header (${fields.length} columns).`
+      const { rows, fields, warnings } = parseCSV(input)
+      const warning = warnings.length
+        ? `${warnings.length} row(s) don't match the header's column count — ${warnings[0]}${warnings.length > 1 ? `, +${warnings.length - 1} more` : ''}`
         : null
       return {
         output: objectsToCSV(rows, outDelimiter),
