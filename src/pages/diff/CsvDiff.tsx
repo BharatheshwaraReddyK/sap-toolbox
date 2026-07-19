@@ -43,6 +43,14 @@ const statusLabel: Record<CSVRowDiff['status'], string> = {
   unchanged: 'unchanged',
 }
 
+const statusHex: Record<CSVRowDiff['status'], string> = {
+  added: '#2f8a4e',
+  removed: '#c2402c',
+  changed: '#ad7a1e',
+  moved: '#3568a8',
+  unchanged: '#838f98',
+}
+
 export default function CsvDiff() {
   const [left, setLeft] = useState(a)
   const [right, setRight] = useState(b)
@@ -65,6 +73,31 @@ export default function CsvDiff() {
 
   function buildReportData(): DiffReportData {
     const { entries: lines, stats } = computeLineDiff(left, right)
+    const fieldRows: DiffReportData['fields'] = []
+    for (const r of rows) {
+      if (r.status === 'unchanged') continue
+      if (r.status === 'changed') {
+        for (const f of r.changedFields) {
+          fieldRows!.push({
+            symbol: statusSymbol[r.status],
+            label: statusLabel[r.status],
+            path: `${r.key} · ${f}`,
+            before: r.before?.[f] ?? '',
+            after: r.after?.[f] ?? '',
+            colorHex: statusHex[r.status],
+          })
+        }
+      } else {
+        fieldRows!.push({
+          symbol: statusSymbol[r.status],
+          label: statusLabel[r.status],
+          path: r.key,
+          before: r.before ? JSON.stringify(r.before) : undefined,
+          after: r.after ? JSON.stringify(r.after) : undefined,
+          colorHex: statusHex[r.status],
+        })
+      }
+    }
     return {
       title: 'CSV diff',
       generatedAt: new Date(),
@@ -74,7 +107,9 @@ export default function CsvDiff() {
       rawB: right,
       stats,
       lines,
-      note: 'The diff below compares the pasted CSV text line-by-line.',
+      fields: fieldRows,
+      fieldsSummary: summary ?? undefined,
+      note: 'The line-by-line diff below compares the pasted CSV text directly.',
     }
   }
 

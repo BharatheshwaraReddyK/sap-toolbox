@@ -45,6 +45,14 @@ const kindLabel: Record<DiffEntry['kind'], string> = {
   unchanged: 'unchanged',
 }
 
+const kindHex: Record<DiffEntry['kind'], string> = {
+  added: '#2f8a4e',
+  removed: '#c2402c',
+  changed: '#ad7a1e',
+  moved: '#3568a8',
+  unchanged: '#838f98',
+}
+
 export default function DiffPage({
   eyebrow,
   title,
@@ -107,7 +115,16 @@ export default function DiffPage({
       rawB: right,
       stats,
       lines,
-      note: 'The diff below was computed after normalizing formatting and re-serializing both sides — line numbers correspond to that normalized form, not necessarily the raw payloads above.',
+      fields: entries.map((e) => ({
+        symbol: kindSymbol[e.kind],
+        label: kindLabel[e.kind],
+        path: e.path,
+        before: e.before !== undefined ? formatValue(e.before) : undefined,
+        after: e.after !== undefined ? formatValue(e.after) : undefined,
+        colorHex: kindHex[e.kind],
+      })),
+      fieldsSummary: summary ?? undefined,
+      note: 'The line-by-line diff below was computed after normalizing formatting and re-serializing both sides — its line numbers correspond to that normalized form, not necessarily the raw payloads above.',
     }
   }
 
