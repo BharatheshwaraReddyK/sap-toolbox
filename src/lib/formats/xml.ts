@@ -5,8 +5,13 @@ const parserOptions = {
   attributeNamePrefix: '@_',
   textNodeName: '#text',
   trimValues: true,
-  parseTagValue: true,
-  parseAttributeValue: true,
+  // Deliberately left off: parseTagValue/parseAttributeValue default to auto-converting
+  // numeric-looking text into real numbers, which silently destroys exactly the kind of
+  // formatting SAP payloads depend on — leading zeros in order/material numbers
+  // (000011 -> 11) and fixed decimal places in amounts (2100.00 -> 2100). Keeping every
+  // value as a raw string preserves round-trip fidelity and makes comparisons trustworthy.
+  parseTagValue: false,
+  parseAttributeValue: false,
 }
 
 export function parseXML(text: string): unknown {
