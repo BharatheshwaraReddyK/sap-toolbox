@@ -130,6 +130,69 @@ export function jsonToEDI(value: unknown): EdiDocument {
   return { standard: v.standard ?? 'unknown', separators: v.separators, segments: v.segments }
 }
 
+/**
+ * Maps an EdiDocument onto an XML-friendly object shape: a root <EDI> element (separators and
+ * standard as attributes, for round-tripping) containing repeated <Segment tag="..."> children,
+ * each with repeated <Element> children (or <Element><Component>.../Component></Element> for
+ * elements that have sub-components).
+ */
+export function ediToXmlObject(doc: EdiDocument): Record<string, unknown> {
+  return {
+    EDI: {
+      '@_standard': doc.standard,
+      '@_segmentSep': doc.separators.segment,
+      '@_elementSep': doc.separators.element,
+      '@_componentSep': doc.separators.component,
+      ...(doc.separators.release ? { '@_releaseChar': doc.separators.release } : {}),
+      Segment: doc.segments.map((seg) => ({
+        '@_tag': seg.tag,
+        ...(seg.elements.length
+          ? { Element: seg.elements.map((el) => (Array.isArray(el) ? { Component: el } : el)) }
+          : {}),
+      })),
+    },
+  }
+}
+
+export function xmlObjectToEDI(value: unknown): EdiDocument {
+  const root = (value as Record<string, unknown>)?.EDI as Record<string, unknown> | undefined
+  if (!root) {
+    throw new Error('Expected a root <EDI> element with <Segment> children — did this come from the XML\u2192EDI conversion?')
+  }
+  const separators: EdiSeparators = {
+    segment: (root['@_segmentSep'] as string) ?? '~',
+    element: (root['@_elementSep'] as string) ?? '*',
+    component: (root['@_componentSep'] as string) ?? ':',
+    release: root['@_releaseChar'] as string | undefined,
+  }
+  const standard = (root['@_standard'] as EdiDocument['standard']) ?? 'unknown'
+
+  const rawSegments = root.Segment
+  const segmentList: Record<string, unknown>[] = Array.isArray(rawSegments)
+    ? (rawSegments as Record<string, unknown>[])
+    : rawSegments
+      ? [rawSegments as Record<string, unknown>]
+      : []
+
+  const segments: EdiSegment[] = segmentList.map((seg) => {
+    const tag = String(seg['@_tag'] ?? '')
+    let rawElements = seg.Element
+    if (rawElements === undefined) rawElements = []
+    else if (!Array.isArray(rawElements)) rawElements = [rawElements]
+    const elements = (rawElements as unknown[]).map((el) => {
+      if (el && typeof el === 'object' && 'Component' in (el as Record<string, unknown>)) {
+        const comps = (el as Record<string, unknown>).Component
+        return Array.isArray(comps) ? comps.map(String) : [String(comps)]
+      }
+      if (el && typeof el === 'object') return ''
+      return String(el ?? '')
+    })
+    return { tag, elements }
+  })
+
+  return { segments, separators, standard }
+}
+
 export interface EnvelopeWarning {
   message: string
 }

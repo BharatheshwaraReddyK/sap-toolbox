@@ -9,6 +9,7 @@ import Excel from './pages/convert/Excel'
 import YamlJson from './pages/convert/YamlJson'
 import PropertiesJson from './pages/convert/PropertiesJson'
 import EdiJson from './pages/convert/EdiJson'
+import XmlEdi from './pages/convert/XmlEdi'
 
 import JsonFormatter from './pages/format/JsonFormatter'
 import XmlFormatter from './pages/format/XmlFormatter'
@@ -37,6 +38,7 @@ export default function App() {
         <Route path="/convert/yaml-json" element={<YamlJson />} />
         <Route path="/convert/properties-json" element={<PropertiesJson />} />
         <Route path="/convert/edi-json" element={<EdiJson />} />
+        <Route path="/convert/xml-edi" element={<XmlEdi />} />
 
         <Route path="/format/json" element={<JsonFormatter />} />
         <Route path="/format/xml" element={<XmlFormatter />} />

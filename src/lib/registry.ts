@@ -25,6 +25,7 @@ export const registry: ToolCategory[] = [
       { path: '/convert/yaml-json', label: 'YAML ⇄ JSON', code: 'YML/JSN', blurb: 'For config-heavy pipelines — Kubernetes, CI/CD, and friends.' },
       { path: '/convert/properties-json', label: '.properties ⇄ JSON', code: 'PROP/JSN', blurb: 'Java-style key=value files, nested via dotted keys.' },
       { path: '/convert/edi-json', label: 'EDI (X12/EDIFACT) ⇄ JSON', code: 'EDI/JSN', blurb: 'Segment/element/component structure, auto-detected separators.' },
+      { path: '/convert/xml-edi', label: 'XML ⇄ EDI (X12/EDIFACT)', code: 'XML/EDI', blurb: 'Segments as XML elements — the conversion SAP integrations do constantly.' },
     ],
   },
   {

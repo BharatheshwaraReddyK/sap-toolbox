@@ -45,9 +45,6 @@ export default function Layout() {
                 ))}
               </div>
             ))}
-            <div className="font-mono text-[10px] text-ink-text-dim opacity-70 pt-1">
-              build {formatBuildTime()}
-            </div>
           </div>
         )}
 
@@ -57,12 +54,4 @@ export default function Layout() {
       </div>
     </div>
   )
-}
-
-function formatBuildTime(): string {
-  try {
-    return new Date(__BUILD_TIME__).toLocaleString()
-  } catch {
-    return __BUILD_TIME__
-  }
 }

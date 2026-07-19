@@ -45,18 +45,7 @@ export default function Sidebar() {
       </nav>
       <div className="px-5 py-4 border-t border-line-soft font-mono text-[10px] text-ink-text-dim leading-relaxed">
         <div>all conversion runs in your browser — nothing leaves this tab</div>
-        <div className="mt-1 opacity-70" title="Build timestamp — confirms which deploy is live">
-          build {formatBuildTime()}
-        </div>
       </div>
     </aside>
   )
-}
-
-function formatBuildTime(): string {
-  try {
-    return new Date(__BUILD_TIME__).toLocaleString()
-  } catch {
-    return __BUILD_TIME__
-  }
 }

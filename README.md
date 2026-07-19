@@ -20,6 +20,7 @@ with match/moved/modified/added/removed stats and word-level highlights.
 - YAML ⇄ JSON
 - `.properties` ⇄ JSON
 - EDI (X12/EDIFACT) ⇄ JSON — separators auto-detected from ISA or UNA/UNB, override available
+- XML ⇄ EDI (X12/EDIFACT) — segments as XML elements, separators preserved as attributes
 
 **Format & validate**
 - JSON formatter (validate, beautify/minify, sort keys)
@@ -93,3 +94,15 @@ functions in `lib/formats/`, then add a short page file and a `registry.ts` entr
 React + TypeScript + Vite, Tailwind CSS v4, and a small set of format libraries:
 `fast-xml-parser`, `papaparse`, `js-yaml`, `xlsx` (SheetJS), `diff` (word-level highlighting),
 `html2canvas` and `jspdf` (report export, lazy-loaded on demand).
+
+## License
+
+MIT — see [`LICENSE`](./LICENSE).
+
+## Author
+
+Bharatheshwara Reddy K
+
+See [`WHITEPAPER.md`](./WHITEPAPER.md) for the design rationale behind this project — why it's
+client-side only, why value formatting is preserved exactly rather than type-coerced, and how
+the comparison engine handles reordering.

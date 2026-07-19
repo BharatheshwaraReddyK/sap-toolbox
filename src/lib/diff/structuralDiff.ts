@@ -22,8 +22,6 @@ export function structuralDiff(a: unknown, b: unknown, opts: Options = {}): Diff
 }
 
 function walk(a: unknown, b: unknown, path: string, out: DiffEntry[], opts: Options) {
-  if (deepEqual(a, b)) return
-
   const aIsObj = isPlainObject(a)
   const bIsObj = isPlainObject(b)
   const aIsArr = Array.isArray(a)
@@ -37,21 +35,40 @@ function walk(a: unknown, b: unknown, path: string, out: DiffEntry[], opts: Opti
   if (aIsObj && bIsObj) {
     const aObj = a as Record<string, unknown>
     const bObj = b as Record<string, unknown>
-    const keys = new Set([...Object.keys(aObj), ...Object.keys(bObj)])
+    const aKeys = Object.keys(aObj)
+    const bKeys = Object.keys(bObj)
+    const keys = new Set([...aKeys, ...bKeys])
     for (const key of keys) {
       const childPath = `${path}.${key}`
       if (!(key in aObj)) {
         out.push({ path: childPath, kind: 'added', after: bObj[key] })
-      } else if (!(key in bObj)) {
-        out.push({ path: childPath, kind: 'removed', before: aObj[key] })
-      } else {
-        walk(aObj[key], bObj[key], childPath, out, opts)
+        continue
       }
+      if (!(key in bObj)) {
+        out.push({ path: childPath, kind: 'removed', before: aObj[key] })
+        continue
+      }
+      const av = aObj[key]
+      const bv = bObj[key]
+      if (deepEqual(av, bv)) {
+        // Content is fully identical (at every nested level) — the only thing left worth
+        // reporting *at this level* is whether this key changed position relative to its
+        // siblings, e.g. two XML sibling tags swapping places with no value change. We still
+        // recurse below even though content matches here, since a deeper level could have its
+        // own internal reordering while still being "equal" content-wise overall.
+        const ai = aKeys.indexOf(key)
+        const bi = bKeys.indexOf(key)
+        if (ai !== bi) {
+          out.push({ path: childPath, kind: 'moved', before: av, after: bv, fromIndex: ai, toIndex: bi })
+        }
+      }
+      walk(av, bv, childPath, out, opts)
     }
     return
   }
 
-  // type mismatch or primitive change
+  // primitive / mismatched-type comparison
+  if (deepEqual(a, b)) return
   if (a === undefined) {
     out.push({ path, kind: 'added', after: b })
   } else if (b === undefined) {
@@ -91,6 +108,11 @@ function diffArrays(a: unknown[], b: unknown[], path: string, out: DiffEntry[], 
     if (i !== j) {
       out.push({ path: `${path}[${i}\u2192${j}]`, kind: 'moved', before: val, after: val, fromIndex: i, toIndex: j })
     }
+    // stableKey matching ignores nested key order by design (so reordered-but-equal elements
+    // still match), which means a deeper reorder inside this element wouldn't otherwise be
+    // seen — recurse so that's still caught. Since content is already confirmed equal here,
+    // anything this recursion finds will purely be 'moved' entries, never spurious changes.
+    walk(val, b[j], `${path}[${j}]`, out, opts)
   })
 
   const remainingA = a.map((_v, i) => i).filter((i) => !usedA.has(i))

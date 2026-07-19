@@ -170,13 +170,6 @@ export default function DiffPage({
                 <span className="text-warn">~ {counts.changed} modified</span>
               </span>
             </div>
-            {counts.moved === 0 && lineDiffCount > 0 && (
-              <div className="px-3.5 py-2 text-[11px] text-ink-text-dim border-b border-line-soft">
-                "Moved" here only applies to array/list elements — reordered object keys (or XML sibling tags) aren't
-                treated as a difference, since key order isn't meaningful data. See the line-by-line diff below to spot
-                that kind of reordering.
-              </div>
-            )}
             <ul className="divide-y divide-line-soft">
               {entries.map((e, i) => (
                 <li key={i} className="px-3.5 py-2.5 flex flex-col gap-1">
