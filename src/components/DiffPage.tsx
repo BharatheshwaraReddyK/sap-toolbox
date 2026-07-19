@@ -1,11 +1,12 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import ManifestStrip from './ManifestStrip'
 import StatusTicker from './StatusTicker'
 import CodePane from './CodePane'
 import ReportDownload from './ReportDownload'
 import WordDiff from './WordDiff'
 import { structuralDiff, type DiffEntry } from '../lib/diff/structuralDiff'
-import { buildReportHtml, type ReportRow } from '../lib/report'
+import { computeLineDiff } from '../lib/diff/lineDiff'
+import type { DiffReportData } from '../lib/report'
 
 interface Props {
   eyebrow: string
@@ -15,6 +16,8 @@ interface Props {
   sampleA: string
   sampleB: string
   parse: (text: string) => unknown
+  /** Re-serializes a parsed value to canonical text for the report's line-level diff. Defaults to pretty JSON. */
+  normalize?: (parsed: unknown) => string
   ignoreArrayOrderOption?: boolean
 }
 
@@ -42,19 +45,20 @@ const kindLabel: Record<DiffEntry['kind'], string> = {
   unchanged: 'unchanged',
 }
 
-const kindHex: Record<DiffEntry['kind'], string> = {
-  added: '#2f8a4e',
-  removed: '#c2402c',
-  changed: '#ad7a1e',
-  moved: '#3568a8',
-  unchanged: '#838f98',
-}
-
-export default function DiffPage({ eyebrow, title, description, tag, sampleA, sampleB, parse, ignoreArrayOrderOption }: Props) {
+export default function DiffPage({
+  eyebrow,
+  title,
+  description,
+  tag,
+  sampleA,
+  sampleB,
+  parse,
+  normalize,
+  ignoreArrayOrderOption,
+}: Props) {
   const [left, setLeft] = useState(sampleA)
   const [right, setRight] = useState(sampleB)
   const [ignoreOrder, setIgnoreOrder] = useState(false)
-  const resultsRef = useRef<HTMLDivElement>(null)
 
   const { entries, error } = useMemo(() => {
     if (!left.trim() || !right.trim()) return { entries: [] as DiffEntry[], error: null }
@@ -82,16 +86,29 @@ export default function DiffPage({ eyebrow, title, description, tag, sampleA, sa
         : `${entries.length} difference(s) — ${counts.added} only in B, ${counts.removed} only in A, ${counts.changed} modified, ${counts.moved} moved`
       : null
 
-  function buildHtml() {
-    const rows: ReportRow[] = entries.map((e) => ({
-      symbol: kindSymbol[e.kind],
-      label: kindLabel[e.kind],
-      path: e.path,
-      before: e.before !== undefined ? formatValue(e.before) : undefined,
-      after: e.after !== undefined ? formatValue(e.after) : undefined,
-      colorHex: kindHex[e.kind],
-    }))
-    return buildReportHtml(title, summary ?? description, rows)
+  function buildReportData(): DiffReportData {
+    const normalizeFn = normalize ?? ((v: unknown) => JSON.stringify(v, null, 2))
+    let normA = left
+    let normB = right
+    try {
+      normA = normalizeFn(parse(left))
+      normB = normalizeFn(parse(right))
+    } catch {
+      // fall back to raw text if either side fails to parse — shouldn't happen since the
+      // download button is disabled until entries exist, but keep this defensive.
+    }
+    const { entries: lines, stats } = computeLineDiff(normA, normB)
+    return {
+      title,
+      generatedAt: new Date(),
+      labelA: 'Source (A) — as pasted',
+      labelB: 'Target (B) — as pasted',
+      rawA: left,
+      rawB: right,
+      stats,
+      lines,
+      note: 'The diff below was computed after normalizing formatting and re-serializing both sides — line numbers correspond to that normalized form, not necessarily the raw payloads above.',
+    }
   }
 
   return (
@@ -109,12 +126,7 @@ export default function DiffPage({ eyebrow, title, description, tag, sampleA, sa
           ) : (
             <span />
           )}
-          <ReportDownload
-            filenameBase={`${tag}-diff-report`}
-            resultsRef={resultsRef}
-            buildHtml={buildHtml}
-            disabled={entries.length === 0}
-          />
+          <ReportDownload filenameBase={`${tag}-diff-report`} buildData={buildReportData} disabled={entries.length === 0} />
         </div>
 
         <div className="grid lg:grid-cols-2 gap-4">
@@ -123,16 +135,16 @@ export default function DiffPage({ eyebrow, title, description, tag, sampleA, sa
         </div>
 
         {entries.length > 0 && (
-          <div ref={resultsRef} className="border border-line rounded-md overflow-hidden bg-panel">
+          <div className="border border-line rounded-md overflow-hidden bg-panel">
             <div className="px-3.5 py-2 border-b border-line bg-panel-raised text-[12px] font-medium text-ink-text flex items-center gap-3 flex-wrap">
               <span>Field-level differences</span>
               <span className="font-mono text-[10px] text-ink-text-dim">
                 <span className="text-add">+ {counts.added} only in B</span>
-                {'  \u00b7  '}
+                {'  ·  '}
                 <span className="text-alert">− {counts.removed} only in A</span>
                 {'  ·  '}
                 <span className="text-move">⇄ {counts.moved} moved</span>
-                {'  \u00b7  '}
+                {'  ·  '}
                 <span className="text-warn">~ {counts.changed} modified</span>
               </span>
             </div>

@@ -7,7 +7,8 @@ beautifier, and a lightweight field mapping designer.
 
 Everything runs client-side. Nothing you paste in is sent to a server. Includes a light/dark
 theme toggle (persisted locally), file upload on every editable pane, and downloadable diff
-reports (HTML, PDF, or PNG).
+reports (HTML, PDF, or PNG) that show both raw payloads side-by-side plus a line-by-line diff
+with match/moved/modified/added/removed stats and word-level highlights.
 
 ## Tools
 

@@ -1,5 +1,5 @@
 import DiffPage from '../../components/DiffPage'
-import { parseXML } from '../../lib/formats/xml'
+import { parseXML, stringifyXML } from '../../lib/formats/xml'
 
 const a = `<order id="4711">
   <status>open</status>
@@ -21,6 +21,7 @@ export default function XmlDiff() {
       sampleA={a}
       sampleB={b}
       parse={parseXML}
+      normalize={(v) => stringifyXML(v, true)}
       ignoreArrayOrderOption
     />
   )

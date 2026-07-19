@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import ManifestStrip from '../../components/ManifestStrip'
 import StatusTicker from '../../components/StatusTicker'
 import CodePane from '../../components/CodePane'
@@ -6,7 +6,8 @@ import ReportDownload from '../../components/ReportDownload'
 import WordDiff from '../../components/WordDiff'
 import { parseCSV } from '../../lib/formats/csv'
 import { diffCSV, type CSVRowDiff } from '../../lib/diff/csvDiff'
-import { buildReportHtml, type ReportRow } from '../../lib/report'
+import { computeLineDiff } from '../../lib/diff/lineDiff'
+import type { DiffReportData } from '../../lib/report'
 
 const a = `sku,description,qty
 A100,Widget,2
@@ -42,19 +43,10 @@ const statusLabel: Record<CSVRowDiff['status'], string> = {
   unchanged: 'unchanged',
 }
 
-const statusHex: Record<CSVRowDiff['status'], string> = {
-  added: '#2f8a4e',
-  removed: '#c2402c',
-  changed: '#ad7a1e',
-  moved: '#3568a8',
-  unchanged: '#838f98',
-}
-
 export default function CsvDiff() {
   const [left, setLeft] = useState(a)
   const [right, setRight] = useState(b)
   const [keyField, setKeyField] = useState('')
-  const resultsRef = useRef<HTMLDivElement>(null)
 
   const { rows, fields, error } = useMemo(() => {
     if (!left.trim() || !right.trim()) return { rows: [] as CSVRowDiff[], fields: [] as string[], error: null }
@@ -71,18 +63,19 @@ export default function CsvDiff() {
   const changedCount = rows.filter((r) => r.status !== 'unchanged').length
   const summary = !error && rows.length ? `${changedCount} of ${rows.length} row(s) differ` : null
 
-  function buildHtml() {
-    const reportRows: ReportRow[] = rows
-      .filter((r) => r.status !== 'unchanged')
-      .map((r) => ({
-        symbol: statusSymbol[r.status],
-        label: statusLabel[r.status],
-        path: r.key,
-        before: r.before ? JSON.stringify(r.before) : undefined,
-        after: r.after ? JSON.stringify(r.after) : undefined,
-        colorHex: statusHex[r.status],
-      }))
-    return buildReportHtml('CSV diff', summary ?? 'CSV row comparison', reportRows)
+  function buildReportData(): DiffReportData {
+    const { entries: lines, stats } = computeLineDiff(left, right)
+    return {
+      title: 'CSV diff',
+      generatedAt: new Date(),
+      labelA: 'Source (A) — as pasted',
+      labelB: 'Target (B) — as pasted',
+      rawA: left,
+      rawB: right,
+      stats,
+      lines,
+      note: 'The diff below compares the pasted CSV text line-by-line.',
+    }
   }
 
   return (
@@ -112,7 +105,7 @@ export default function CsvDiff() {
               ))}
             </select>
           </div>
-          <ReportDownload filenameBase="csv-diff-report" resultsRef={resultsRef} buildHtml={buildHtml} disabled={changedCount === 0} />
+          <ReportDownload filenameBase="csv-diff-report" buildData={buildReportData} disabled={changedCount === 0} />
         </div>
 
         <div className="grid lg:grid-cols-2 gap-4">
@@ -121,7 +114,7 @@ export default function CsvDiff() {
         </div>
 
         {rows.length > 0 && (
-          <div ref={resultsRef} className="border border-line rounded-md overflow-hidden bg-panel">
+          <div className="border border-line rounded-md overflow-hidden bg-panel">
             <div className="px-3.5 py-2 border-b border-line bg-panel-raised text-[12px] font-medium text-ink-text">
               Row-level differences
             </div>

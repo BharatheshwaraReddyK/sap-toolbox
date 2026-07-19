@@ -1,43 +1,31 @@
-import { useState, type RefObject } from 'react'
+import { useState } from 'react'
 import Button from './Button'
-import { downloadElementAsImage, downloadElementAsPdf, downloadHtmlFile, type ReportFormat } from '../lib/report'
+import { downloadDiffReportImage, downloadDiffReportPdf, downloadHtmlFile, buildDiffReportHtml, type DiffReportData, type ReportFormat } from '../lib/report'
 
 interface Props {
   filenameBase: string
-  /** Element containing the on-screen results, used for image/PDF capture. */
-  resultsRef: RefObject<HTMLElement | null>
-  /** Builds the standalone HTML report string on demand (only needed for the 'html' format). */
-  buildHtml: () => string
+  buildData: () => DiffReportData
   disabled?: boolean
 }
 
-export default function ReportDownload({ filenameBase, resultsRef, buildHtml, disabled }: Props) {
+export default function ReportDownload({ filenameBase, buildData, disabled }: Props) {
   const [format, setFormat] = useState<ReportFormat>('html')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  function panelBackground(): string {
-    const value = getComputedStyle(document.documentElement).getPropertyValue('--color-panel').trim()
-    return value || '#182028'
-  }
-
   async function handleDownload() {
     setError(null)
     try {
+      const data = buildData()
       if (format === 'html') {
-        downloadHtmlFile(buildHtml(), `${filenameBase}.html`)
-        return
-      }
-      const el = resultsRef.current
-      if (!el) {
-        setError('Nothing to capture yet.')
+        downloadHtmlFile(buildDiffReportHtml(data), `${filenameBase}.html`)
         return
       }
       setBusy(true)
       if (format === 'image') {
-        await downloadElementAsImage(el, `${filenameBase}.png`, panelBackground())
+        await downloadDiffReportImage(data, `${filenameBase}.png`)
       } else {
-        await downloadElementAsPdf(el, `${filenameBase}.pdf`, panelBackground())
+        await downloadDiffReportPdf(data, `${filenameBase}.pdf`)
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not generate that report.')
