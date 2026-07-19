@@ -8,11 +8,13 @@ import CsvXml from './pages/convert/CsvXml'
 import Excel from './pages/convert/Excel'
 import YamlJson from './pages/convert/YamlJson'
 import PropertiesJson from './pages/convert/PropertiesJson'
+import EdiJson from './pages/convert/EdiJson'
 
 import JsonFormatter from './pages/format/JsonFormatter'
 import XmlFormatter from './pages/format/XmlFormatter'
 import CsvFormatter from './pages/format/CsvFormatter'
 import YamlFormatter from './pages/format/YamlFormatter'
+import EdiFormatter from './pages/format/EdiFormatter'
 
 import JsonDiff from './pages/diff/JsonDiff'
 import XmlDiff from './pages/diff/XmlDiff'
@@ -34,11 +36,13 @@ export default function App() {
         <Route path="/convert/excel" element={<Excel />} />
         <Route path="/convert/yaml-json" element={<YamlJson />} />
         <Route path="/convert/properties-json" element={<PropertiesJson />} />
+        <Route path="/convert/edi-json" element={<EdiJson />} />
 
         <Route path="/format/json" element={<JsonFormatter />} />
         <Route path="/format/xml" element={<XmlFormatter />} />
         <Route path="/format/csv" element={<CsvFormatter />} />
         <Route path="/format/yaml" element={<YamlFormatter />} />
+        <Route path="/format/edi" element={<EdiFormatter />} />
 
         <Route path="/diff/json" element={<JsonDiff />} />
         <Route path="/diff/xml" element={<XmlDiff />} />

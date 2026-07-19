@@ -19,21 +19,27 @@ with match/moved/modified/added/removed stats and word-level highlights.
 - Excel ⇄ JSON / CSV (upload a workbook, or paste JSON/CSV to download one)
 - YAML ⇄ JSON
 - `.properties` ⇄ JSON
+- EDI (X12/EDIFACT) ⇄ JSON — separators auto-detected from ISA or UNA/UNB, override available
 
 **Format & validate**
 - JSON formatter (validate, beautify/minify, sort keys)
 - XML formatter (validate, beautify/minify, strip namespaces)
 - CSV normalizer (header/row-length checks — reported as warnings, not fatal errors — delimiter conversion)
 - YAML formatter (validate, re-indent)
+- EDI formatter & validator — segment viewer, envelope balance checks (ISA/IEA, GS/GE, ST/SE, UNB/UNZ, UNH/UNT)
 
 **Compare** — every tool supports uploading a file for either side, and downloading a report
-(HTML / PDF / PNG) of the results
+(HTML / PDF / PNG) with both raw payloads, a field-level differences table, and a line-by-line
+diff — all three are now also visible on-screen, not just in the download
 - JSON diff — structural, path-level, with moved-element detection and word-level highlighting for changed strings
 - XML diff — canonicalized structural compare, same moved/word-diff support
 - CSV diff — row-wise or by a key column, with moved-row detection and word-level field highlights
 
 Differences are labeled with a consistent symbol scheme: `+` only in B, `−` only in A,
-`⇄` moved/shuffled, `~` modified.
+`⇄` moved/shuffled, `~` modified. Note: object/segment key order (e.g. two XML sibling elements
+swapping places) isn't flagged in the field-level view, since key order isn't meaningful data in
+JSON/XML — but it *is* caught by the line-by-line diff view, since that compares actual text
+layout.
 
 **SAP payload helpers**
 - IDoc viewer & converter — segment-aware XML → JSON with an expandable tree

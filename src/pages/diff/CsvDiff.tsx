@@ -4,6 +4,7 @@ import StatusTicker from '../../components/StatusTicker'
 import CodePane from '../../components/CodePane'
 import ReportDownload from '../../components/ReportDownload'
 import WordDiff from '../../components/WordDiff'
+import LineDiffView from '../../components/LineDiffView'
 import { parseCSV } from '../../lib/formats/csv'
 import { diffCSV, type CSVRowDiff } from '../../lib/diff/csvDiff'
 import { computeLineDiff } from '../../lib/diff/lineDiff'
@@ -68,11 +69,16 @@ export default function CsvDiff() {
     }
   }, [left, right, keyField])
 
+  const lineDiff = useMemo(() => {
+    if (!left.trim() || !right.trim()) return null
+    return computeLineDiff(left, right)
+  }, [left, right])
+
   const changedCount = rows.filter((r) => r.status !== 'unchanged').length
   const summary = !error && rows.length ? `${changedCount} of ${rows.length} row(s) differ` : null
 
   function buildReportData(): DiffReportData {
-    const { entries: lines, stats } = computeLineDiff(left, right)
+    const { entries: lines, stats } = lineDiff ?? { entries: [], stats: { same: 0, moved: 0, modified: 0, added: 0, removed: 0 } }
     const fieldRows: DiffReportData['fields'] = []
     for (const r of rows) {
       if (r.status === 'unchanged') continue
@@ -177,6 +183,10 @@ export default function CsvDiff() {
               ))}
             </ul>
           </div>
+        )}
+
+        {lineDiff && lineDiff.stats.moved + lineDiff.stats.modified + lineDiff.stats.added + lineDiff.stats.removed > 0 && (
+          <LineDiffView entries={lineDiff.entries} />
         )}
       </div>
     </>

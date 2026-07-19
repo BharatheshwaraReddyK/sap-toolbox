@@ -24,6 +24,7 @@ export const registry: ToolCategory[] = [
       { path: '/convert/excel', label: 'Excel ⇄ JSON / CSV', code: 'XLS/JSN', blurb: 'Upload a workbook, export JSON, CSV, or a fresh .xlsx.' },
       { path: '/convert/yaml-json', label: 'YAML ⇄ JSON', code: 'YML/JSN', blurb: 'For config-heavy pipelines — Kubernetes, CI/CD, and friends.' },
       { path: '/convert/properties-json', label: '.properties ⇄ JSON', code: 'PROP/JSN', blurb: 'Java-style key=value files, nested via dotted keys.' },
+      { path: '/convert/edi-json', label: 'EDI (X12/EDIFACT) ⇄ JSON', code: 'EDI/JSN', blurb: 'Segment/element/component structure, auto-detected separators.' },
     ],
   },
   {
@@ -35,6 +36,7 @@ export const registry: ToolCategory[] = [
       { path: '/format/xml', label: 'XML formatter', code: 'XML', blurb: 'Validate well-formedness, beautify, strip namespaces.' },
       { path: '/format/csv', label: 'CSV normalizer', code: 'CSV', blurb: 'Check delimiter, headers, row length — re-emit clean.' },
       { path: '/format/yaml', label: 'YAML formatter', code: 'YML', blurb: 'Validate syntax and re-indent consistently.' },
+      { path: '/format/edi', label: 'EDI formatter & validator', code: 'EDI', blurb: 'Segment viewer, envelope balance checks (ISA/IEA, UNB/UNZ, …).' },
     ],
   },
   {

@@ -4,8 +4,9 @@ import StatusTicker from './StatusTicker'
 import CodePane from './CodePane'
 import ReportDownload from './ReportDownload'
 import WordDiff from './WordDiff'
+import LineDiffView from './LineDiffView'
 import { structuralDiff, type DiffEntry } from '../lib/diff/structuralDiff'
-import { computeLineDiff } from '../lib/diff/lineDiff'
+import { computeLineDiff, type LineEntry, type LineDiffStats } from '../lib/diff/lineDiff'
 import type { DiffReportData } from '../lib/report'
 
 interface Props {
@@ -68,17 +69,27 @@ export default function DiffPage({
   const [right, setRight] = useState(sampleB)
   const [ignoreOrder, setIgnoreOrder] = useState(false)
 
-  const { entries, error } = useMemo(() => {
-    if (!left.trim() || !right.trim()) return { entries: [] as DiffEntry[], error: null }
+  const { entries, lineEntries, lineStats, error } = useMemo(() => {
+    if (!left.trim() || !right.trim()) {
+      return { entries: [] as DiffEntry[], lineEntries: [] as LineEntry[], lineStats: null as LineDiffStats | null, error: null }
+    }
     try {
       const a = parse(left)
       const b = parse(right)
-      return { entries: structuralDiff(a, b, { ignoreArrayOrder: ignoreOrder }), error: null }
+      const structural = structuralDiff(a, b, { ignoreArrayOrder: ignoreOrder })
+      const normalizeFn = normalize ?? ((v: unknown) => JSON.stringify(v, null, 2))
+      const { entries: lines, stats } = computeLineDiff(normalizeFn(a), normalizeFn(b))
+      return { entries: structural, lineEntries: lines, lineStats: stats, error: null }
     } catch (e) {
-      return { entries: [] as DiffEntry[], error: e instanceof Error ? e.message : 'Could not compare inputs.' }
+      return {
+        entries: [] as DiffEntry[],
+        lineEntries: [] as LineEntry[],
+        lineStats: null as LineDiffStats | null,
+        error: e instanceof Error ? e.message : 'Could not compare inputs.',
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [left, right, ignoreOrder, parse])
+  }, [left, right, ignoreOrder, parse, normalize])
 
   const counts = {
     added: entries.filter((e) => e.kind === 'added').length,
@@ -87,25 +98,19 @@ export default function DiffPage({
     moved: entries.filter((e) => e.kind === 'moved').length,
   }
 
+  const lineDiffCount = lineStats ? lineStats.moved + lineStats.modified + lineStats.added + lineStats.removed : 0
+  const hasAnyDifference = entries.length > 0 || lineDiffCount > 0
+
   const summary =
     !error && left.trim() && right.trim()
-      ? entries.length === 0
+      ? !hasAnyDifference
         ? 'identical'
-        : `${entries.length} difference(s) — ${counts.added} only in B, ${counts.removed} only in A, ${counts.changed} modified, ${counts.moved} moved`
+        : entries.length === 0
+          ? `no field-level differences — ${lineDiffCount} line(s) differ (see line-by-line diff below)`
+          : `${entries.length} difference(s) — ${counts.added} only in B, ${counts.removed} only in A, ${counts.changed} modified, ${counts.moved} moved`
       : null
 
   function buildReportData(): DiffReportData {
-    const normalizeFn = normalize ?? ((v: unknown) => JSON.stringify(v, null, 2))
-    let normA = left
-    let normB = right
-    try {
-      normA = normalizeFn(parse(left))
-      normB = normalizeFn(parse(right))
-    } catch {
-      // fall back to raw text if either side fails to parse — shouldn't happen since the
-      // download button is disabled until entries exist, but keep this defensive.
-    }
-    const { entries: lines, stats } = computeLineDiff(normA, normB)
     return {
       title,
       generatedAt: new Date(),
@@ -113,8 +118,8 @@ export default function DiffPage({
       labelB: 'Target (B) — as pasted',
       rawA: left,
       rawB: right,
-      stats,
-      lines,
+      stats: lineStats ?? { same: 0, moved: 0, modified: 0, added: 0, removed: 0 },
+      lines: lineEntries,
       fields: entries.map((e) => ({
         symbol: kindSymbol[e.kind],
         label: kindLabel[e.kind],
@@ -143,7 +148,7 @@ export default function DiffPage({
           ) : (
             <span />
           )}
-          <ReportDownload filenameBase={`${tag}-diff-report`} buildData={buildReportData} disabled={entries.length === 0} />
+          <ReportDownload filenameBase={`${tag}-diff-report`} buildData={buildReportData} disabled={!hasAnyDifference} />
         </div>
 
         <div className="grid lg:grid-cols-2 gap-4">
@@ -197,6 +202,8 @@ export default function DiffPage({
             </ul>
           </div>
         )}
+
+        {lineEntries.length > 0 && lineDiffCount > 0 && <LineDiffView entries={lineEntries} />}
       </div>
     </>
   )
