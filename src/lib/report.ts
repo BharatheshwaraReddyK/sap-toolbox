@@ -68,6 +68,14 @@ table.fields code{font-family:ui-monospace,"JetBrains Mono",monospace;font-size:
 .footer{margin-top:20px;color:#8891A4;font-size:0.72rem;font-family:ui-monospace,monospace;}
 `
 
+// Only used for image/PDF capture: a screenshot can't represent a scrollable box, so anything
+// clipped by max-height/overflow would simply be lost. The plain .html download keeps the
+// scrollable version above, since that's viewed live in a browser where scrolling works fine.
+const CAPTURE_OVERRIDE_CSS = `
+.payload pre{max-height:none!important;overflow:visible!important;}
+.diff-view{max-height:none!important;overflow:visible!important;}
+`
+
 const symbolFor: Record<LineEntry['kind'], string> = {
   same: '',
   added: '+',
@@ -172,7 +180,7 @@ async function withOffscreenReport<T>(data: DiffReportData, run: (el: HTMLElemen
   const container = document.createElement('div')
   container.style.cssText = 'position:fixed;left:-99999px;top:0;width:1200px;background:#ffffff;'
   const style = document.createElement('style')
-  style.textContent = REPORT_CSS
+  style.textContent = REPORT_CSS + CAPTURE_OVERRIDE_CSS
   container.appendChild(style)
   const body = document.createElement('div')
   body.innerHTML = buildDiffReportBody(data)
